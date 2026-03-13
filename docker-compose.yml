@@ -1,0 +1,36 @@
+services:
+  backend:
+    build: ./backend
+    container_name: meeting-app-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_PATH=/data/meetings.db
+    volumes:
+      - ./data:/data
+      - ./backend/src:/app/src
+    restart: unless-stopped
+    networks:
+      - meeting-network
+
+  frontend:
+    build: ./frontend
+    container_name: meeting-app-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - meeting-network
+
+networks:
+  meeting-network:
+    driver: bridge
+
+volumes:
+  meeting-data:
+
+# Made with Bob
