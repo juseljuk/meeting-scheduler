@@ -15,7 +15,7 @@ function initializeCalendar() {
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            right: 'dayGridMonth,timeGridWeek'
         },
         height: 'auto',
         events: [],
@@ -32,14 +32,10 @@ function initializeCalendar() {
             // Open new meeting modal with selected date
             openNewMeetingModal();
             
-            // Set the start date to the clicked date at 9 AM
-            const startDate = new Date(info.date);
-            startDate.setHours(9, 0, 0, 0);
-            document.getElementById('start_datetime').value = formatDateTimeLocal(startDate);
-            
-            // Set end date to 1 hour later
-            const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-            document.getElementById('end_datetime').value = formatDateTimeLocal(endDate);
+            // Set the start and end date to the clicked date
+            const dateStr = info.dateStr;
+            document.getElementById('start_date').value = dateStr;
+            document.getElementById('end_date').value = dateStr;
         },
         eventDidMount: function(info) {
             // Add custom class based on meeting type
@@ -61,25 +57,39 @@ function initializeCalendar() {
 function updateCalendar(meetings) {
     if (!calendar) return;
     
+    // Filter meetings based on selected participant
+    const filteredMeetings = window.app.filterMeetingsByParticipant(meetings);
+    
     // Convert meetings to FullCalendar events
-    const events = meetings.map(meeting => ({
-        id: meeting.id.toString(),
-        title: meeting.customer 
-            ? `${meeting.title} (${meeting.customer})`
-            : meeting.title,
-        start: meeting.start_datetime,
-        end: meeting.end_datetime,
-        backgroundColor: meeting.is_onsite ? '#48bb78' : '#667eea',
-        borderColor: meeting.is_onsite ? '#38a169' : '#5568d3',
-        extendedProps: {
-            description: meeting.description,
-            location: meeting.location,
-            attendees: meeting.attendees,
-            customer: meeting.customer,
-            is_onsite: meeting.is_onsite,
-            country: meeting.country
-        }
-    }));
+    const events = filteredMeetings.map(meeting => {
+        // Extract date from datetime string (YYYY-MM-DD)
+        const startDate = meeting.start_datetime.split('T')[0];
+        const endDate = meeting.end_datetime.split('T')[0];
+        
+        // Calculate the actual end date for display (add 1 day for FullCalendar)
+        const displayEndDate = new Date(endDate);
+        displayEndDate.setDate(displayEndDate.getDate() + 1);
+        
+        return {
+            id: meeting.id.toString(),
+            title: meeting.customer
+                ? `${meeting.title} (${meeting.customer})`
+                : meeting.title,
+            start: startDate,
+            end: displayEndDate.toISOString().split('T')[0],
+            allDay: true,
+            backgroundColor: meeting.is_onsite ? '#48bb78' : '#667eea',
+            borderColor: meeting.is_onsite ? '#38a169' : '#5568d3',
+            extendedProps: {
+                description: meeting.description,
+                location: meeting.location,
+                attendees: meeting.attendees,
+                customer: meeting.customer,
+                is_onsite: meeting.is_onsite,
+                country: meeting.country
+            }
+        };
+    });
     
     // Remove all events and add new ones
     calendar.removeAllEvents();

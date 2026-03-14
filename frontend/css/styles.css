@@ -32,9 +32,10 @@ header {
 
 .header-content {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 30px;
+    gap: 20px;
 }
 
 .header-logo {
@@ -42,14 +43,14 @@ header {
 }
 
 .header-logo .logo {
-    width: 300px !important;
-    max-width: 300px !important;
+    width: 450px !important;
+    max-width: 450px !important;
     height: auto !important;
     display: block;
 }
 
 .header-text {
-    text-align: left;
+    text-align: center;
 }
 
 header h1 {
@@ -72,6 +73,36 @@ main {
     display: flex;
     gap: 10px;
     margin-bottom: 30px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.filter-group label {
+    margin-bottom: 0;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.participant-filter {
+    padding: 10px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.participant-filter:focus {
+    outline: none;
+    border-color: #667eea;
 }
 
 /* Buttons */
@@ -173,6 +204,13 @@ main {
     color: #718096;
     font-size: 0.9rem;
     margin-bottom: 8px;
+}
+
+.meeting-card .participants {
+    color: #4a5568;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    font-weight: 500;
 }
 
 .meeting-card .location {
@@ -312,6 +350,34 @@ textarea {
 }
 
 .checkbox-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.participants-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 12px;
+    background: #f7fafc;
+    border-radius: 6px;
+}
+
+.participant-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.participant-checkbox:hover {
+    background-color: #e2e8f0;
+}
+
+.participant-checkbox input[type="checkbox"] {
     width: auto;
     margin-right: 8px;
     cursor: pointer;

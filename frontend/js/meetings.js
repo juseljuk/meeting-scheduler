@@ -27,14 +27,28 @@ async function saveMeeting(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
+    
+    // Get selected participants
+    const selectedParticipants = Array.from(document.querySelectorAll('input[name="participant"]:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (selectedParticipants.length === 0) {
+        window.app.showNotification('Please select at least one participant', 'error');
+        return;
+    }
+    
+    // Convert dates to datetime format (full day: 00:00:00 to 23:59:59)
+    const startDate = formData.get('start_date');
+    const endDate = formData.get('end_date');
+    
     const meetingData = {
         title: formData.get('title'),
         customer: formData.get('customer'),
         description: formData.get('description'),
-        start_datetime: formData.get('start_datetime'),
-        end_datetime: formData.get('end_datetime'),
+        start_datetime: `${startDate}T00:00:00`,
+        end_datetime: `${endDate}T23:59:59`,
         location: formData.get('location'),
-        attendees: formData.get('attendees'),
+        attendees: selectedParticipants.join(', '),
         is_onsite: formData.get('is_onsite') ? 1 : 0,
         country: formData.get('country')
     };
@@ -112,14 +126,27 @@ function renderMeetingsList(meetings) {
         return;
     }
     
+    // Filter by selected participant
+    const filteredMeetings = window.app.filterMeetingsByParticipant(meetings);
+    
+    if (filteredMeetings.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No meetings found</h3>
+                <p>No meetings for the selected participant</p>
+            </div>
+        `;
+        return;
+    }
+    
     // Sort by start date (upcoming first)
-    const sortedMeetings = [...meetings].sort((a, b) => 
+    const sortedMeetings = [...filteredMeetings].sort((a, b) =>
         new Date(a.start_datetime) - new Date(b.start_datetime)
     );
     
     // Filter to show only upcoming meetings
     const now = new Date();
-    const upcomingMeetings = sortedMeetings.filter(m => 
+    const upcomingMeetings = sortedMeetings.filter(m =>
         new Date(m.end_datetime) >= now
     );
     
@@ -133,19 +160,42 @@ function renderMeetingsList(meetings) {
         return;
     }
     
-    container.innerHTML = upcomingMeetings.map(meeting => `
-        <div class="meeting-card ${meeting.is_onsite ? 'onsite' : ''}" 
-             onclick="window.app.openEditMeetingModal(${JSON.stringify(meeting).replace(/"/g, '"')})">
-            <h3>${escapeHtml(meeting.title)}</h3>
-            ${meeting.customer ? `<div class="customer">👤 ${escapeHtml(meeting.customer)}</div>` : ''}
-            <div class="time">🕒 ${window.app.formatDateTime(meeting.start_datetime)}</div>
-            ${meeting.location ? `<div class="location">📍 ${escapeHtml(meeting.location)}</div>` : ''}
-            <span class="badge ${meeting.is_onsite ? 'onsite' : 'remote'}">
-                ${meeting.is_onsite ? '🏢 On-site' : '💻 Remote'}
-                ${meeting.country ? ` - ${escapeHtml(meeting.country)}` : ''}
-            </span>
-        </div>
-    `).join('');
+    container.innerHTML = upcomingMeetings.map(meeting => {
+        // Format date range
+        const startDate = new Date(meeting.start_datetime);
+        const endDate = new Date(meeting.end_datetime);
+        const dateRange = formatDateRange(startDate, endDate);
+        
+        // Get participants
+        const participants = meeting.attendees ? meeting.attendees.split(',').map(p => p.trim()) : [];
+        
+        return `
+            <div class="meeting-card ${meeting.is_onsite ? 'onsite' : ''}"
+                 onclick="window.app.openEditMeetingModal(${JSON.stringify(meeting).replace(/"/g, '"')})">
+                <h3>${escapeHtml(meeting.title)}</h3>
+                ${meeting.customer ? `<div class="customer">👤 ${escapeHtml(meeting.customer)}</div>` : ''}
+                <div class="time">📅 ${dateRange}</div>
+                ${participants.length > 0 ? `<div class="participants">👥 ${participants.map(p => escapeHtml(p)).join(', ')}</div>` : ''}
+                ${meeting.location ? `<div class="location">📍 ${escapeHtml(meeting.location)}</div>` : ''}
+                <span class="badge ${meeting.is_onsite ? 'onsite' : 'remote'}">
+                    ${meeting.is_onsite ? '🏢 On-site' : '💻 Remote'}
+                    ${meeting.country ? ` - ${escapeHtml(meeting.country)}` : ''}
+                </span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Format date range for display
+function formatDateRange(startDate, endDate) {
+    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    const startStr = startDate.toLocaleDateString('en-US', options);
+    const endStr = endDate.toLocaleDateString('en-US', options);
+    
+    if (startStr === endStr) {
+        return startStr;
+    }
+    return `${startStr} - ${endStr}`;
 }
 
 // Escape HTML to prevent XSS

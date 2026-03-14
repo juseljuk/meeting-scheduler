@@ -22,7 +22,7 @@
         <header>
             <div class="header-content">
                 <div class="header-logo">
-                    <img src="images/wxo-emea-travels.png" alt="WXO EMEA Travels" class="logo">
+                    <img src="images/emea-travels-new.png" alt="EMEA Travels" class="logo">
                 </div>
                 <div class="header-text">
                     <h1>📅 Meeting Scheduler</h1>
@@ -32,10 +32,20 @@
         </header>
 
         <main>
-            <!-- Action buttons -->
+            <!-- Action buttons and filters -->
             <div class="actions">
                 <button id="newMeetingBtn" class="btn btn-primary">+ New Meeting</button>
                 <button id="refreshBtn" class="btn btn-secondary">🔄 Refresh</button>
+                <div class="filter-group">
+                    <label for="participantFilter">Filter by Participant:</label>
+                    <select id="participantFilter" class="participant-filter">
+                        <option value="">All Participants</option>
+                        <option value="Ricardo">Ricardo</option>
+                        <option value="Jukka">Jukka</option>
+                        <option value="Máté">Máté</option>
+                        <option value="Steve">Steve</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Calendar view -->
@@ -73,13 +83,13 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="start_datetime">Start Date & Time *</label>
-                        <input type="datetime-local" id="start_datetime" name="start_datetime" required>
+                        <label for="start_date">Start Date *</label>
+                        <input type="date" id="start_date" name="start_date" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="end_datetime">End Date & Time *</label>
-                        <input type="datetime-local" id="end_datetime" name="end_datetime" required>
+                        <label for="end_date">End Date *</label>
+                        <input type="date" id="end_date" name="end_date" required>
                     </div>
                 </div>
 
@@ -89,8 +99,25 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="attendees">Attendees (comma-separated)</label>
-                    <input type="text" id="attendees" name="attendees" placeholder="john@example.com, jane@example.com">
+                    <label>Participants *</label>
+                    <div class="participants-group">
+                        <label class="participant-checkbox">
+                            <input type="checkbox" name="participant" value="Ricardo">
+                            Ricardo
+                        </label>
+                        <label class="participant-checkbox">
+                            <input type="checkbox" name="participant" value="Jukka">
+                            Jukka
+                        </label>
+                        <label class="participant-checkbox">
+                            <input type="checkbox" name="participant" value="Máté">
+                            Máté
+                        </label>
+                        <label class="participant-checkbox">
+                            <input type="checkbox" name="participant" value="Steve">
+                            Steve
+                        </label>
+                    </div>
                 </div>
 
                 <div class="form-group checkbox-group">
