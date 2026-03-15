@@ -21,8 +21,9 @@ function initializeCalendar() {
         events: [],
         eventClick: function(info) {
             // Find the meeting data
-            const meetingId = parseInt(info.event.id);
-            const meeting = window.app.allMeetings.find(m => m.id === meetingId);
+            // Support both string IDs (Cloudant) and numeric IDs (SQLite)
+            const meetingId = info.event.id;
+            const meeting = window.app.allMeetings.find(m => m.id.toString() === meetingId.toString());
             
             if (meeting) {
                 window.app.openEditMeetingModal(meeting);
@@ -39,7 +40,8 @@ function initializeCalendar() {
         },
         eventDidMount: function(info) {
             // Add custom class based on meeting type
-            const meeting = window.app.allMeetings.find(m => m.id === parseInt(info.event.id));
+            // Support both string IDs (Cloudant) and numeric IDs (SQLite)
+            const meeting = window.app.allMeetings.find(m => m.id.toString() === info.event.id.toString());
             if (meeting) {
                 if (meeting.is_onsite) {
                     info.el.classList.add('fc-event-onsite');
