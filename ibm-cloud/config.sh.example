@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# IBM Cloud Configuration Template
+# Copy this file to config.sh and fill in your actual values
+
+# Configuration
+PROJECT_NAME="ce-wxo-related"
+REGION="eu-de"
+REGISTRY_NAMESPACE="wxo-demos"
+BACKEND_IMAGE="meeting-app-backend"
+FRONTEND_IMAGE="meeting-app-frontend"
+VERSION="v1"
+
+# Cloudant Configuration - Using existing Cloudant instance
+CLOUDANT_URL="https://your-cloudant-instance.cloudantnosqldb.appdomain.cloud"
+CLOUDANT_APIKEY="your-cloudant-api-key-here"

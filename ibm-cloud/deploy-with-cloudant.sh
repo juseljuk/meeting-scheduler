@@ -5,17 +5,20 @@
 
 set -e
 
-# Configuration
-PROJECT_NAME="ce-wxo-related"
-REGION="eu-de"
-REGISTRY_NAMESPACE="wxo-demos"
-BACKEND_IMAGE="meeting-app-backend"
-FRONTEND_IMAGE="meeting-app-frontend"
-VERSION="v1"
+# Load configuration from config.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 
-# Cloudant Configuration - Using existing Cloudant instance
-CLOUDANT_URL="${CLOUDANT_URL:-https://342de116-e8d6-466e-9729-23b1c8c49c38-bluemix.cloudantnosqldb.appdomain.cloud}"
-CLOUDANT_APIKEY="${CLOUDANT_APIKEY:-2VXBIWSRIGUuXCt3pr21Nxssd539zSSz7IYWLEYsEV2p}"
+if [ ! -f "${CONFIG_FILE}" ]; then
+    echo "❌ Configuration file not found: ${CONFIG_FILE}"
+    echo "📝 Please copy config.sh.example to config.sh and fill in your credentials:"
+    echo "   cp ibm-cloud/config.sh.example ibm-cloud/config.sh"
+    echo "   # Then edit ibm-cloud/config.sh with your actual values"
+    exit 1
+fi
+
+# Source the configuration
+source "${CONFIG_FILE}"
 
 echo "🚀 Starting deployment to IBM Cloud Code Engine with Cloudant..."
 echo ""

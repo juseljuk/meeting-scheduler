@@ -14,6 +14,9 @@ data/
 .env.local
 .env.*.local
 
+# IBM Cloud configuration (contains sensitive credentials)
+ibm-cloud/config.sh
+
 # IDE
 .vscode/
 .idea/
