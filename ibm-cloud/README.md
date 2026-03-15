@@ -56,20 +56,36 @@ The deployment script will automatically:
 - Create registry secret in Code Engine for pulling private images
 - Authenticate Docker with the registry
 
-**Important**: Update the `REGISTRY_NAMESPACE` variable in `deploy.sh` with your desired namespace name.
+**Important**: Configuration is now stored in a separate `config.sh` file for security.
 
-### 5. Update Deployment Configuration
+### 5. Setup Deployment Configuration
 
-Edit `deploy.sh` and update these variables:
+1. **Copy the configuration template**:
+   ```bash
+   cd ibm-cloud
+   cp config.sh.example config.sh
+   ```
 
-```bash
-PROJECT_NAME="ce-wxo-related"        # Your Code Engine project name
-REGION="eu-de"                       # Your preferred region (us-south, eu-de, etc.)
-REGISTRY_NAMESPACE="wxo-demos"       # Your Container Registry namespace
-BACKEND_IMAGE="meeting-app-backend"  # Backend image name
-FRONTEND_IMAGE="meeting-app-frontend" # Frontend image name
-VERSION="v1"                         # Image version tag
-```
+2. **Edit `config.sh` with your settings**:
+   ```bash
+   nano config.sh  # or use your preferred editor
+   ```
+
+   Update these variables:
+   ```bash
+   PROJECT_NAME="ce-wxo-related"        # Your Code Engine project name
+   REGION="eu-de"                       # Your preferred region (us-south, eu-de, etc.)
+   REGISTRY_NAMESPACE="wxo-demos"       # Your Container Registry namespace
+   BACKEND_IMAGE="meeting-app-backend"  # Backend image name
+   FRONTEND_IMAGE="meeting-app-frontend" # Frontend image name
+   VERSION="v1"                         # Image version tag
+   
+   # For Cloudant deployments, also set:
+   CLOUDANT_URL="https://your-instance.cloudantnosqldb.appdomain.cloud"
+   CLOUDANT_APIKEY="your-api-key-here"
+   ```
+
+3. **Important**: The `config.sh` file is in `.gitignore` and will not be committed to version control, keeping your credentials safe.
 
 ### 6. Run Deployment
 

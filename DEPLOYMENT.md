@@ -172,14 +172,27 @@ cp data/meetings.db data/meetings.db.backup
    ibmcloud cr namespace-add <your-namespace>
    ```
 
-3. **Configure deployment script**:
+3. **Configure deployment**:
    
-   Edit `ibm-cloud/deploy.sh`:
+   Copy and edit the configuration file:
+   ```bash
+   cd ibm-cloud
+   cp config.sh.example config.sh
+   nano config.sh  # Edit with your values
+   ```
+   
+   Update these settings in `config.sh`:
    ```bash
    PROJECT_NAME="ce-wxo-related"      # Your project name
    REGION="eu-de"                     # Your region
    REGISTRY_NAMESPACE="wxo-demos"     # Your namespace
+   
+   # For Cloudant deployments:
+   CLOUDANT_URL="https://your-instance.cloudantnosqldb.appdomain.cloud"
+   CLOUDANT_APIKEY="your-api-key-here"
    ```
+   
+   **Note**: `config.sh` is in `.gitignore` to protect your credentials.
 
 ### Deployment Process
 

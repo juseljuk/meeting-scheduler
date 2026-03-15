@@ -40,6 +40,27 @@ This guide explains how to deploy the meeting app using **IBM Cloudant** (manage
 1. IBM Cloud account
 2. IBM Cloud CLI installed
 3. Logged in: `ibmcloud login --sso`
+4. Cloudant instance with credentials
+
+### Setup Configuration
+
+1. **Copy the configuration template**:
+   ```bash
+   cd ibm-cloud
+   cp config.sh.example config.sh
+   ```
+
+2. **Edit `config.sh` with your credentials**:
+   ```bash
+   # Edit the file with your actual values
+   nano config.sh  # or use your preferred editor
+   ```
+
+   Update these values:
+   ```bash
+   CLOUDANT_URL="https://your-instance.cloudantnosqldb.appdomain.cloud"
+   CLOUDANT_APIKEY="your-api-key-here"
+   ```
 
 ### Deploy with Cloudant
 
@@ -50,8 +71,8 @@ chmod +x deploy-with-cloudant.sh
 ```
 
 The script will:
-1. Create Cloudant instance (if needed)
-2. Generate service credentials
+1. Load configuration from `config.sh`
+2. Verify Cloudant credentials
 3. Build and push Docker images
 4. Deploy backend with Cloudant credentials
 5. Deploy frontend
@@ -82,21 +103,31 @@ ibmcloud resource service-key-create meeting-app-cloudant-credentials Manager \
 ibmcloud resource service-key meeting-app-cloudant-credentials --output json
 ```
 
-### Step 3: Deploy Application
+### Step 3: Configure Deployment
 
 ```bash
-# Set environment variables
-export CLOUDANT_URL="https://xxx.cloudantnosqldb.appdomain.cloud"
-export CLOUDANT_APIKEY="your-api-key"
+# Copy configuration template
+cd ibm-cloud
+cp config.sh.example config.sh
 
-# Deploy backend with Cloudant
-ibmcloud ce application create \
-  --name meeting-app-backend \
-  --image de.icr.io/wxo-demos/meeting-app-backend:v1 \
-  --port 3000 \
-  --env CLOUDANT_URL="${CLOUDANT_URL}" \
-  --env CLOUDANT_APIKEY="${CLOUDANT_APIKEY}"
+# Edit config.sh with your Cloudant credentials
+nano config.sh
 ```
+
+Update these values in `config.sh`:
+```bash
+CLOUDANT_URL="https://xxx.cloudantnosqldb.appdomain.cloud"
+CLOUDANT_APIKEY="your-api-key"
+```
+
+### Step 4: Deploy Application
+
+```bash
+# Run deployment script (reads from config.sh)
+./deploy-with-cloudant.sh
+```
+
+The script will automatically use credentials from `config.sh` to deploy the backend.
 
 ## How It Works
 
