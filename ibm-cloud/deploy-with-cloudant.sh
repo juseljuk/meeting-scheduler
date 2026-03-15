@@ -101,12 +101,16 @@ echo "🚀 Deploying backend application with Cloudant..."
 # Check if application exists
 if ibmcloud ce application get --name meeting-app-backend &> /dev/null; then
     echo "Updating existing backend application..."
+    # Get the backend URL first for API_URL
+    BACKEND_URL=$(ibmcloud ce application get --name meeting-app-backend --output json | jq -r '.status.url')
+    
     ibmcloud ce application update \
         --name meeting-app-backend \
         --image de.icr.io/${REGISTRY_NAMESPACE}/${BACKEND_IMAGE}:${VERSION} \
         --registry-secret icr-secret \
         --env CLOUDANT_URL="${CLOUDANT_URL}" \
-        --env CLOUDANT_APIKEY="${CLOUDANT_APIKEY}"
+        --env CLOUDANT_APIKEY="${CLOUDANT_APIKEY}" \
+        --env API_URL="${BACKEND_URL}"
 else
     echo "Creating new backend application..."
     ibmcloud ce application create \
@@ -121,6 +125,13 @@ else
         --env NODE_ENV=production \
         --env CLOUDANT_URL="${CLOUDANT_URL}" \
         --env CLOUDANT_APIKEY="${CLOUDANT_APIKEY}"
+    
+    # Get backend URL after creation and update with API_URL
+    BACKEND_URL=$(ibmcloud ce application get --name meeting-app-backend --output json | jq -r '.status.url')
+    echo "Setting API_URL for Swagger documentation..."
+    ibmcloud ce application update \
+        --name meeting-app-backend \
+        --env API_URL="${BACKEND_URL}"
 fi
 
 # Get backend URL
