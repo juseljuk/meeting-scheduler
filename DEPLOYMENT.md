@@ -148,6 +148,8 @@ cp data/meetings.db data/meetings.db.backup
 
 ## IBM Cloud Deployment
 
+⚠️ **IMPORTANT**: For production deployments, use `deploy-with-storage.sh` to enable persistent storage. The database will survive container restarts. See [Persistent Storage Guide](ibm-cloud/PERSISTENT_STORAGE.md) for details.
+
 ### Prerequisites
 
 1. **IBM Cloud Account**: Active account with Code Engine access
@@ -181,12 +183,27 @@ cp data/meetings.db data/meetings.db.backup
 
 ### Deployment Process
 
-1. **Run deployment script**:
+#### Option 1: With Persistent Storage (Recommended for Production)
+
+1. **Run deployment script with persistent storage**:
+   ```bash
+   cd ibm-cloud
+   chmod +x deploy-with-storage.sh
+   ./deploy-with-storage.sh
+   ```
+
+   This creates a persistent volume that survives container restarts.
+
+#### Option 2: Without Persistent Storage (Development/Testing Only)
+
+1. **Run basic deployment script**:
    ```bash
    cd ibm-cloud
    chmod +x deploy.sh
    ./deploy.sh
    ```
+
+   ⚠️ **Warning**: Data will be lost when containers restart.
 
 2. **Deployment steps** (automated):
    - ✅ Verify IBM Cloud authentication
@@ -441,11 +458,15 @@ docker-compose restart backend
 ```
 
 **IBM Cloud Code Engine**:
-- Database is ephemeral (lost on container restart)
-- For production, consider:
-  - Mounting persistent volume
-  - Using IBM Cloud Databases (PostgreSQL)
-  - Regular exports to Cloud Object Storage
+- ⚠️ **IMPORTANT**: Use `deploy-with-storage.sh` for production deployments
+- The original `deploy.sh` has ephemeral storage (data lost on restart)
+- With persistent volume (recommended):
+  ```bash
+  cd ibm-cloud
+  ./deploy-with-storage.sh
+  ```
+- See [ibm-cloud/PERSISTENT_STORAGE.md](ibm-cloud/PERSISTENT_STORAGE.md) for details
+- Alternative: Migrate to IBM Cloud Databases (PostgreSQL) for enterprise use
 
 #### Application Backup
 

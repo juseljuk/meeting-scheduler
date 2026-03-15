@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { meetingQueries } = require('../database');
+const { getMeetingQueries, isCloudant } = require('../databaseAdapter');
 
 /**
  * @swagger
@@ -130,9 +130,12 @@ const { meetingQueries } = require('../database');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
-    const meetings = meetingQueries.getAll.all();
+    const meetingQueries = getMeetingQueries();
+    const meetings = isCloudant()
+      ? await meetingQueries.getAll()
+      : meetingQueries.getAll();
     res.json(meetings);
   } catch (error) {
     next(error);
@@ -167,10 +170,13 @@ router.get('/', (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id', (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const meeting = meetingQueries.getById.get(id);
+    const meetingQueries = getMeetingQueries();
+    const meeting = isCloudant()
+      ? await meetingQueries.getById(id)
+      : meetingQueries.getById(id);
     
     if (!meeting) {
       return res.status(404).json({ error: 'Meeting not found' });
@@ -219,7 +225,7 @@ router.get('/:id', (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', (req, res, next) => {
+router.post('/', async (req, res, next) => {
   try {
     const {
       title,
@@ -235,26 +241,34 @@ router.post('/', (req, res, next) => {
 
     // Validation
     if (!title || !start_datetime || !end_datetime) {
-      return res.status(400).json({ 
-        error: 'Title, start_datetime, and end_datetime are required' 
+      return res.status(400).json({
+        error: 'Title, start_datetime, and end_datetime are required'
       });
     }
 
-    // Create meeting
-    const result = meetingQueries.create.run(
+    const meetingQueries = getMeetingQueries();
+    const meetingData = {
       title,
-      description || null,
+      description: description || null,
       start_datetime,
       end_datetime,
-      location || null,
-      attendees || null,
-      customer || null,
-      is_onsite ? 1 : 0,
-      country || null
-    );
+      location: location || null,
+      attendees: attendees || null,
+      customer: customer || null,
+      is_onsite: is_onsite ? 1 : 0,
+      country: country || null
+    };
+
+    // Create meeting
+    const result = isCloudant()
+      ? await meetingQueries.create(meetingData)
+      : meetingQueries.create(meetingData);
 
     // Get the created meeting
-    const meeting = meetingQueries.getById.get(result.lastInsertRowid);
+    const meetingId = result.id || result.lastID || result.lastInsertRowid;
+    const meeting = isCloudant()
+      ? await meetingQueries.getById(meetingId)
+      : meetingQueries.getById(meetingId);
     
     res.status(201).json(meeting);
   } catch (error) {
@@ -302,7 +316,7 @@ router.post('/', (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id', (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -317,35 +331,46 @@ router.put('/:id', (req, res, next) => {
       country
     } = req.body;
 
+    const meetingQueries = getMeetingQueries();
+
     // Check if meeting exists
-    const existing = meetingQueries.getById.get(id);
+    const existing = isCloudant()
+      ? await meetingQueries.getById(id)
+      : meetingQueries.getById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
     // Validation
     if (!title || !start_datetime || !end_datetime) {
-      return res.status(400).json({ 
-        error: 'Title, start_datetime, and end_datetime are required' 
+      return res.status(400).json({
+        error: 'Title, start_datetime, and end_datetime are required'
       });
     }
 
-    // Update meeting
-    meetingQueries.update.run(
+    const meetingData = {
       title,
-      description || null,
+      description: description || null,
       start_datetime,
       end_datetime,
-      location || null,
-      attendees || null,
-      customer || null,
-      is_onsite ? 1 : 0,
-      country || null,
-      id
-    );
+      location: location || null,
+      attendees: attendees || null,
+      customer: customer || null,
+      is_onsite: is_onsite ? 1 : 0,
+      country: country || null
+    };
+
+    // Update meeting
+    if (isCloudant()) {
+      await meetingQueries.update(id, meetingData);
+    } else {
+      meetingQueries.update(id, meetingData);
+    }
 
     // Get updated meeting
-    const meeting = meetingQueries.getById.get(id);
+    const meeting = isCloudant()
+      ? await meetingQueries.getById(id)
+      : meetingQueries.getById(id);
     
     res.json(meeting);
   } catch (error) {
@@ -377,18 +402,25 @@ router.put('/:id', (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const meetingQueries = getMeetingQueries();
     
     // Check if meeting exists
-    const existing = meetingQueries.getById.get(id);
+    const existing = isCloudant()
+      ? await meetingQueries.getById(id)
+      : meetingQueries.getById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
     // Delete meeting
-    meetingQueries.delete.run(id);
+    if (isCloudant()) {
+      await meetingQueries.delete(id);
+    } else {
+      meetingQueries.delete(id);
+    }
     
     res.status(204).send();
   } catch (error) {

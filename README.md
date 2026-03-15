@@ -161,6 +161,11 @@ curl -X POST http://localhost:3000/api/meetings \
 
 ## Deployment to IBM Cloud Code Engine
 
+⚠️ **IMPORTANT**: IBM Cloud Code Engine containers are ephemeral - data is lost on restart. For production:
+- **Recommended**: Use `deploy-with-cos-backup.sh` for automatic Cloud Object Storage backups
+- **Alternative**: Migrate to PostgreSQL for full persistence
+- See [Storage Solutions Guide](ibm-cloud/STORAGE_SOLUTIONS.md) for all options
+
 ### Prerequisites
 
 1. **Install IBM Cloud CLI**
@@ -188,24 +193,33 @@ curl -X POST http://localhost:3000/api/meetings \
 
 1. **Update deployment script**
    
-   Edit `ibm-cloud/deploy.sh` and update:
+   Edit `ibm-cloud/deploy-with-storage.sh` (or `deploy.sh` for testing) and update:
    - `PROJECT_NAME` - Your Code Engine project name (default: ce-wxo-related)
    - `REGISTRY_NAMESPACE` - Your IBM Cloud Container Registry namespace
    - `REGION` - Your preferred region (e.g., us-south, eu-de)
 
 2. **Run deployment script**
+   
+   **For Production (with COS backup - Recommended):**
+   ```bash
+   cd ibm-cloud
+   chmod +x deploy-with-cos-backup.sh
+   ./deploy-with-cos-backup.sh
+   ```
+   
+   **For Testing Only (ephemeral storage):**
    ```bash
    cd ibm-cloud
    chmod +x deploy.sh
    ./deploy.sh
    ```
 
-   The script will:
+   The COS backup script will:
+   - Create/configure Cloud Object Storage instance
    - Authenticate with IBM Cloud Container Registry
    - Build and push Docker images
    - Create/select Code Engine project
-   - Create registry secret for image pulling
-   - Deploy backend application
+   - Deploy backend with automatic database backups (every 5 minutes)
    - Deploy frontend application with backend URL
    - Display application URLs
 
@@ -222,9 +236,20 @@ curl -X POST http://localhost:3000/api/meetings \
 The deployed application uses:
 - **Direct API Communication**: Frontend calls backend directly via CORS (no reverse proxy)
 - **Environment Variable Injection**: Backend URL is injected into frontend HTML at container startup
+- **COS Backup**: SQLite database backed up to Cloud Object Storage every 5 minutes
+- **Auto-restore**: Database automatically restored from COS on container startup
 - **Auto-scaling**: Both applications scale 1-3 instances based on load
 - **Container Registry**: Private images stored in IBM Cloud Container Registry
 - **Registry Secrets**: Secure image pulling from private registry
+
+### Data Persistence Options
+
+| Deployment Type | Data Persistence | Data Loss Window | Cost | Use Case |
+|----------------|------------------|------------------|------|----------|
+| `deploy-with-cos-backup.sh` | ✅ COS backups | Up to 5 min | ~$0.02/month | **Production** |
+| `deploy.sh` | ❌ Ephemeral | Complete loss | $0 | Testing only |
+
+**For production**, use COS backup to minimize data loss. For zero data loss, consider migrating to PostgreSQL.
 
 ### Manual Deployment
 

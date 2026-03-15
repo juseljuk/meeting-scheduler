@@ -4,13 +4,25 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const meetingsRouter = require('./routes/meetings');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { initializeCOSBackup, isCOSConfigured } = require('./cosBackup');
+const { initDatabase, getDatabaseType } = require('./databaseAdapter');
 
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database is initialized when the module is loaded
-require('./database');
+// Initialize database (async)
+initDatabase().then(() => {
+  console.log(`✅ Database ready: ${getDatabaseType()}`);
+  
+  // Initialize COS backup system only if using SQLite (not needed for Cloudant)
+  if (getDatabaseType() === 'sqlite') {
+    initializeCOSBackup();
+  }
+}).catch(error => {
+  console.error('❌ Failed to initialize database:', error);
+  process.exit(1);
+});
 
 // Middleware
 app.use(cors());
@@ -51,7 +63,9 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    database: getDatabaseType(),
+    cosBackup: getDatabaseType() === 'sqlite' && isCOSConfigured() ? 'enabled' : 'disabled'
   });
 });
 
