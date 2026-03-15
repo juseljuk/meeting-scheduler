@@ -71,6 +71,16 @@ Given that:
 │   - POST /api/meetings                  │
 │   - PUT /api/meetings/:id               │
 │   - DELETE /api/meetings/:id            │
+│   - GET /health                         │
+└──────────────┬──────────────────────────┘
+               │
+               │ Database Adapter
+               ▼
+┌─────────────────────────────────────────┐
+│   IBM Cloudant (Production)             │
+│   or SQLite (Local Development)         │
+│   - Automatic detection                 │
+│   - Zero configuration                  │
 └─────────────────────────────────────────┘
 ```
 
@@ -124,6 +134,8 @@ import { updateMeeting } from './tools/update-meeting.js';
 import { deleteMeeting } from './tools/delete-meeting.js';
 
 // Get backend URL from environment or default
+// Production: https://meeting-app-backend.xxx.codeengine.appdomain.cloud
+// Local: http://localhost:3000
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 
 // Create MCP server
@@ -156,8 +168,8 @@ const tools = [
       type: 'object',
       properties: {
         id: {
-          type: 'number',
-          description: 'The unique ID of the meeting to retrieve',
+          type: 'string',
+          description: 'The unique ID of the meeting to retrieve (timestamp-based string)',
         },
       },
       required: ['id'],
@@ -216,8 +228,8 @@ const tools = [
       type: 'object',
       properties: {
         id: {
-          type: 'number',
-          description: 'The unique ID of the meeting to update',
+          type: 'string',
+          description: 'The unique ID of the meeting to update (timestamp-based string)',
         },
         title: {
           type: 'string',
@@ -266,8 +278,8 @@ const tools = [
       type: 'object',
       properties: {
         id: {
-          type: 'number',
-          description: 'The unique ID of the meeting to delete',
+          type: 'string',
+          description: 'The unique ID of the meeting to delete (timestamp-based string)',
         },
       },
       required: ['id'],
@@ -391,7 +403,8 @@ name: meeting-manager
 description: MCP toolkit for managing meetings with CRUD operations
 command: node index.js
 env:
-  - BACKEND_URL=http://localhost:3000
+  - BACKEND_URL=https://meeting-app-backend.xxx.codeengine.appdomain.cloud
+  # For local development: BACKEND_URL=http://localhost:3000
 tools:
   - "*"
 package_root: ../../mcp-server
@@ -465,6 +478,52 @@ orchestrate agents import -f orchestrate/specs/meeting-manager-agent.yaml
 4. **Better Error Handling**: Centralized error management
 5. **State Management**: Can maintain context between operations
 6. **Future-Proof**: MCP is becoming the standard for AI tool integration
+7. **Database Agnostic**: Works with both Cloudant (production) and SQLite (local) transparently
+
+## Backend Database Architecture
+
+The meeting-app backend uses a **database adapter pattern** that automatically detects and uses the appropriate database:
+
+- **Production (IBM Cloud Code Engine)**: Uses IBM Cloudant when `CLOUDANT_URL` and `CLOUDANT_APIKEY` environment variables are set
+- **Local Development**: Falls back to SQLite when Cloudant credentials are not present
+- **Transparent to MCP Server**: The MCP server doesn't need to know which database is being used - it just calls the REST API
+
+### Verifying Database Type
+
+You can verify which database the backend is using:
+
+```bash
+# Check backend health endpoint
+curl https://meeting-app-backend.xxx.codeengine.appdomain.cloud/health
+
+# Expected production response:
+{
+  "status": "healthy",
+  "database": "cloudant",
+  "cosBackup": "disabled"
+}
+
+# Local development response:
+{
+  "status": "healthy",
+  "database": "sqlite",
+  "cosBackup": "disabled"
+}
+```
+
+### Data Model Considerations
+
+When using Cloudant, meeting IDs are **timestamp-based strings** (e.g., "1710518400000") instead of auto-incrementing integers. The MCP server tool schemas have been updated to reflect this:
+
+```javascript
+// Meeting ID type
+id: {
+  type: 'string',  // Changed from 'number'
+  description: 'The unique ID of the meeting (timestamp-based string)'
+}
+```
+
+This ensures compatibility with both SQLite (which uses integer IDs) and Cloudant (which uses string IDs).
 
 ## Example Enhanced Tools
 
@@ -518,13 +577,48 @@ The MCP Server approach is **recommended** because it:
 - ✅ Provides better integration with AI agents
 - ✅ Is the modern standard for AI tool integration
 - ✅ Requires less configuration than OpenAPI approach
+- ✅ Works seamlessly with Cloudant-backed production deployment
+- ✅ Database-agnostic (works with both Cloudant and SQLite)
 
 **Estimated effort**: 1-2 weeks vs 3-4 weeks for OpenAPI approach
+
+## Backend Deployment Considerations
+
+### Production Deployment
+The backend is deployed to IBM Cloud Code Engine with:
+- **Database**: IBM Cloudant (managed CouchDB)
+- **Persistence**: Data survives container restarts
+- **Backups**: Automatic daily backups (Standard plan)
+- **Endpoint**: HTTPS with public access
+- **Health Check**: `/health` endpoint shows database type
+
+### MCP Server Configuration
+When deploying the MCP server, configure the backend URL:
+
+```bash
+# For production
+export BACKEND_URL=https://meeting-app-backend.xxx.codeengine.appdomain.cloud
+
+# For local development
+export BACKEND_URL=http://localhost:3000
+```
+
+Or set it in the toolkit spec file as shown above.
 
 ## Next Steps
 
 1. **Decision**: Choose between OpenAPI or MCP Server approach
 2. **If MCP Server**: Follow this implementation plan
+   - Update `BACKEND_URL` to point to your Code Engine deployment
+   - Verify backend is using Cloudant via `/health` endpoint
+   - Test with production data
 3. **If OpenAPI**: Follow the original AGENT_IMPLEMENTATION_PLAN.md
 
-Both approaches will work, but MCP Server is recommended for this use case.
+Both approaches will work with the Cloudant-backed backend, but MCP Server is recommended for this use case.
+
+## Additional Resources
+
+- [CLOUDANT_DEPLOYMENT.md](ibm-cloud/CLOUDANT_DEPLOYMENT.md) - Cloudant setup and deployment guide
+- [AGENT_IMPLEMENTATION_PLAN.md](AGENT_IMPLEMENTATION_PLAN.md) - OpenAPI-based implementation plan
+- [IBM Cloudant Documentation](https://cloud.ibm.com/docs/Cloudant)
+- [MCP Protocol Specification](https://modelcontextprotocol.io/)

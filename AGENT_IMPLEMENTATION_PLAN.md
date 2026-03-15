@@ -12,6 +12,12 @@ This plan outlines the implementation of a watsonx Orchestrate AI agent that pro
 
 ## Current Backend Analysis
 
+### Database Architecture
+The backend uses a **database adapter pattern** with automatic detection:
+- **Primary**: IBM Cloudant (managed CouchDB) for production deployments
+- **Fallback**: SQLite for local development when Cloudant is not configured
+- **Zero Configuration**: Automatically detects and uses Cloudant when credentials are present
+
 ### API Endpoints
 The meeting-app backend exposes the following REST endpoints:
 
@@ -20,11 +26,12 @@ The meeting-app backend exposes the following REST endpoints:
 3. **POST /api/meetings** - Create new meeting
 4. **PUT /api/meetings/:id** - Update existing meeting
 5. **DELETE /api/meetings/:id** - Delete meeting
+6. **GET /health** - Health check endpoint (shows database type: cloudant/sqlite)
 
 ### Data Model
 ```javascript
 Meeting {
-  id: integer (auto-generated)
+  id: string (timestamp-based, e.g., "1710518400000")
   title: string (required)
   description: string (optional)
   start_datetime: string (required, ISO 8601 format)
@@ -34,10 +41,12 @@ Meeting {
   customer: string (optional)
   is_onsite: integer (0 or 1)
   country: string (optional)
-  created_at: timestamp
-  updated_at: timestamp
+  created_at: timestamp (ISO 8601 string)
+  updated_at: timestamp (ISO 8601 string)
 }
 ```
+
+**Note**: When using Cloudant, documents include `_id` and `_rev` fields internally, but these are abstracted by the database adapter.
 
 ## Implementation Strategy
 
@@ -80,27 +89,34 @@ paths:
 ```
 
 ### Phase 2: Connection Configuration (Optional)
-**Objective**: Configure backend API endpoint URL
+**Objective**: Configure backend API endpoint URL for different environments
 
-**Note**: The meeting-app backend APIs do not require authentication. Connection configuration is only needed if you want to manage the base URL separately or support multiple environments (dev/staging/production).
+**Note**: The meeting-app backend APIs do not require authentication. The backend automatically uses Cloudant when deployed to IBM Cloud Code Engine, and falls back to SQLite for local development.
 
 **Tasks**:
-1. Decide if connection is needed (optional for unauthenticated APIs)
+1. Decide if connection is needed (optional for managing different environment URLs)
 2. If using connection: Create key-value connection for base URL management
 3. If not using connection: Hardcode server URL in OpenAPI specification
 
 **Option A: Without Connection (Simpler)**:
-- Hardcode the server URL directly in the OpenAPI specification
-- No connection configuration needed
-- Suitable for single environment or development
+- Hardcode the production server URL directly in the OpenAPI specification
+- Suitable for single environment deployment
+- Example: `https://meeting-app-backend.xxx.codeengine.appdomain.cloud`
 
 **Option B: With Connection (More Flexible)**:
 ```yaml
-# Key-Value connection for base URL management
+# Key-Value connection for environment-specific URLs
 kind: key_value
 entries:
-  BASE_URL: http://localhost:3000
+  BASE_URL: https://meeting-app-backend.xxx.codeengine.appdomain.cloud
+  # Or for local testing: http://localhost:3000
 ```
+
+**Backend Database Configuration**:
+The backend automatically detects and uses the appropriate database:
+- **Production (IBM Cloud)**: Uses Cloudant when `CLOUDANT_URL` and `CLOUDANT_APIKEY` environment variables are set
+- **Local Development**: Falls back to SQLite when Cloudant credentials are not present
+- **No Agent Configuration Needed**: The database selection is transparent to the watsonx Orchestrate agent
 
 **Deliverables**:
 - Connection specification (if using Option B)
@@ -124,6 +140,10 @@ orchestrate tools import -k openapi -f meeting-api-openapi.yaml
 
 # Verify tools
 orchestrate tools list
+
+# Test backend health (verify database type)
+curl https://meeting-app-backend.xxx.codeengine.appdomain.cloud/health
+# Expected response: {"status":"healthy","database":"cloudant","cosBackup":"disabled"}
 ```
 
 **Expected Tools**:
@@ -283,6 +303,8 @@ orchestrate copilot prompt-tune -o meeting-manager-agent.yaml
 - Day 1-2: Create OpenAPI specification
 - Day 3: Set up connection configuration (optional) or finalize server URL
 - Day 4-5: Import tools and verify functionality
+  - Verify backend is using Cloudant (check /health endpoint)
+  - Test each API endpoint with sample data
 
 ### Week 2: Agent Development
 - Day 1-2: Create agent specification
@@ -291,30 +313,38 @@ orchestrate copilot prompt-tune -o meeting-manager-agent.yaml
 
 ### Week 3: Testing & Refinement
 - Day 1-3: Comprehensive testing of all scenarios
+  - Test with Cloudant-backed production deployment
+  - Verify data persistence across container restarts
 - Day 4-5: Bug fixes and optimization
 
 ### Week 4: Enhancement & Documentation
 - Day 1-3: Implement priority enhancements
 - Day 4-5: Documentation and deployment guide
+  - Document Cloudant integration
+  - Include database monitoring instructions
 
 ## Technical Requirements
 
 ### Prerequisites
 - watsonx Orchestrate instance (SaaS or on-premises)
 - IBM watsonx Orchestrate ADK installed
-- Meeting-app backend running and accessible
+- Meeting-app backend deployed to IBM Cloud Code Engine with Cloudant
 - Python 3.9+ (for ADK)
+- IBM Cloud account (for Cloudant and Code Engine)
 
 ### Tools & Technologies
 - watsonx Orchestrate ADK CLI
 - OpenAPI 3.0 specification
 - YAML for configuration files
 - Node.js backend (existing)
+- IBM Cloudant (managed CouchDB)
+- IBM Cloud Code Engine (container platform)
 
 ### Access Requirements
 - watsonx Orchestrate tenant access
-- API endpoint accessibility
+- Backend API endpoint accessibility (HTTPS)
 - Appropriate permissions for agent/tool creation
+- IBM Cloud access for monitoring Cloudant (optional)
 
 ## File Structure
 
@@ -360,19 +390,30 @@ meeting-app/
 
 ### Potential Risks
 1. **API Accessibility**: Backend may not be accessible from watsonx Orchestrate
-   - *Mitigation*: Use ngrok or similar tunneling service for development
-   - *Solution*: Deploy backend to accessible cloud environment
+   - *Mitigation*: Deploy to IBM Cloud Code Engine with public endpoint
+   - *Solution*: Backend is already deployed with HTTPS access
+   - *Status*: ✅ Resolved with Code Engine deployment
 
 2. **Date/Time Parsing**: Complex date formats may cause issues
    - *Mitigation*: Provide clear examples in agent instructions
    - *Solution*: Add date normalization in backend or use helper tools
 
-3. **No Authentication**: Backend APIs are open without authentication
-   - *Note*: This is acceptable for development/internal use
-   - *Future Enhancement*: Consider adding authentication for production deployment
-   - *Security*: Ensure backend is not exposed to public internet without proper security
+3. **Database Connectivity**: Cloudant connection issues
+   - *Mitigation*: Backend automatically falls back to SQLite if Cloudant fails
+   - *Monitoring*: Use `/health` endpoint to verify database type
+   - *Solution*: Check Cloudant credentials and network connectivity
 
-4. **LLM Limitations**: Model may not understand all queries
+4. **Data Persistence**: Ensuring data survives container restarts
+   - *Status*: ✅ Resolved with Cloudant integration
+   - *Note*: Data is stored in managed Cloudant database, not in container
+   - *Backup*: Cloudant Standard plan includes automatic daily backups
+
+5. **No Authentication**: Backend APIs are open without authentication
+   - *Note*: This is acceptable for development/internal use
+   - *Future Enhancement*: Consider adding IBM App ID authentication for production
+   - *Security*: Backend is deployed on IBM Cloud with network isolation
+
+6. **LLM Limitations**: Model may not understand all queries
    - *Mitigation*: Provide comprehensive instructions and examples
    - *Solution*: Use agent refinement with Orchestrate Copilot
 
@@ -404,14 +445,92 @@ meeting-app/
 - [watsonx Orchestrate ADK Documentation](https://developer.watson-orchestrate.ibm.com/)
 - [OpenAPI Specification](https://spec.openapis.org/oas/v3.0.0)
 - [Agent Development Guide](https://developer.watson-orchestrate.ibm.com/agents/create_agent)
+- [IBM Cloudant Documentation](https://cloud.ibm.com/docs/Cloudant)
+- [IBM Cloud Code Engine Documentation](https://cloud.ibm.com/docs/codeengine)
+
+### Project-Specific Documentation
+- [`CLOUDANT_DEPLOYMENT.md`](ibm-cloud/CLOUDANT_DEPLOYMENT.md) - Cloudant setup and deployment guide
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) - General deployment instructions
+- [`ibm-cloud/README.md`](ibm-cloud/README.md) - IBM Cloud deployment overview
 
 ### Support
 - watsonx Orchestrate Community
 - IBM Support Portal
 - ADK GitHub Repository
+- IBM Cloud Support
 
 ## Conclusion
 
 This plan provides a comprehensive roadmap for implementing an AI agent that interfaces with the meeting-app backend. By following the phased approach, we ensure proper testing and validation at each step, resulting in a robust, user-friendly meeting management assistant powered by watsonx Orchestrate.
 
 The agent will enable users to manage meetings through natural conversation, significantly improving the user experience and accessibility of the meeting management system.
+
+### Key Architecture Highlights
+
+✅ **Production-Ready Persistence**: IBM Cloudant provides managed, highly available database with automatic backups
+
+✅ **Zero Data Loss**: Data persists across container restarts and deployments
+
+✅ **Automatic Fallback**: Backend seamlessly falls back to SQLite for local development
+
+✅ **Transparent Integration**: The database adapter pattern means the watsonx Orchestrate agent doesn't need to know about the underlying database
+
+✅ **Cloud-Native Deployment**: Backend runs on IBM Cloud Code Engine with Cloudant integration
+
+### Database Monitoring
+
+Monitor your deployment's database status:
+```bash
+# Check which database is being used
+curl https://meeting-app-backend.xxx.codeengine.appdomain.cloud/health
+
+# Expected production response:
+{
+  "status": "healthy",
+  "database": "cloudant",
+  "cosBackup": "disabled"
+}
+```
+
+### Next Steps After Agent Deployment
+
+1. **Verify Database**: Confirm backend is using Cloudant via `/health` endpoint
+2. **Test Data Persistence**: Create meetings and verify they survive container restarts
+3. **Monitor Cloudant**: Use IBM Cloud dashboard to monitor database usage and performance
+4. **Set Up Backups**: Ensure Cloudant automatic backups are enabled (Standard plan)
+5. **Consider Authentication**: Evaluate IBM App ID integration for production security
+
+### Key Architecture Highlights
+
+✅ **Production-Ready Persistence**: IBM Cloudant provides managed, highly available database with automatic backups
+
+✅ **Zero Data Loss**: Data persists across container restarts and deployments
+
+✅ **Automatic Fallback**: Backend seamlessly falls back to SQLite for local development
+
+✅ **Transparent Integration**: The database adapter pattern means the watsonx Orchestrate agent doesn't need to know about the underlying database
+
+✅ **Cloud-Native Deployment**: Backend runs on IBM Cloud Code Engine with Cloudant integration
+
+### Database Monitoring
+
+Monitor your deployment's database status:
+```bash
+# Check which database is being used
+curl https://meeting-app-backend.xxx.codeengine.appdomain.cloud/health
+
+# Expected production response:
+{
+  "status": "healthy",
+  "database": "cloudant",
+  "cosBackup": "disabled"
+}
+```
+
+### Next Steps After Agent Deployment
+
+1. **Verify Database**: Confirm backend is using Cloudant via `/health` endpoint
+2. **Test Data Persistence**: Create meetings and verify they survive container restarts
+3. **Monitor Cloudant**: Use IBM Cloud dashboard to monitor database usage and performance
+4. **Set Up Backups**: Ensure Cloudant automatic backups are enabled (Standard plan)
+5. **Consider Authentication**: Evaluate IBM App ID integration for production security
