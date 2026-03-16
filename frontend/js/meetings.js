@@ -6,7 +6,7 @@ let currentPage = 1;
 let totalPages = 1;
 
 // Load all meetings
-async function loadMeetings() {
+window.loadMeetings = async function loadMeetings() {
     try {
         const response = await fetch(`${window.app.API_BASE_URL}/meetings`);
         

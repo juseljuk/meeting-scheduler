@@ -14,7 +14,8 @@ A containerized web application for scheduling and managing customer meetings wi
 - ☁️ **Cloud Ready**: Deployable to IBM Cloud Code Engine
 - 🗄️ **Dual Database Support**: IBM Cloudant (production) or SQLite (local)
 - 🤖 **AI Agent Integration**: watsonx Orchestrate MCP server for natural language meeting management
-- 📊 **Swagger API Documentation**: Interactive API documentation at `/api-docs`
+- 💬 **Embedded Webchat**: Integrated watsonx Orchestrate webchat with automatic UI synchronization
+- � **Swagger API Documentation**: Interactive API documentation at `/api-docs`
 
 ## Technology Stack
 
@@ -550,6 +551,7 @@ orchestrate agents import -f orchestrate/specs/meeting-manager-agent.yaml
 - [`mcp-server/INSTALLATION.md`](mcp-server/INSTALLATION.md) - Installation guide
 - [`mcp-server/TROUBLESHOOTING.md`](mcp-server/TROUBLESHOOTING.md) - Troubleshooting guide
 - [`MCP_SERVER_OPTION.md`](MCP_SERVER_OPTION.md) - Design and architecture
+- [`WEBCHAT_UI_SYNC.md`](WEBCHAT_UI_SYNC.md) - Webchat UI synchronization guide
 
 ## Roadmap
 
@@ -559,6 +561,7 @@ orchestrate agents import -f orchestrate/specs/meeting-manager-agent.yaml
 - [x] Swagger API documentation
 - [x] MCP server for AI agent integration
 - [x] watsonx Orchestrate agent
+- [x] Embedded webchat with automatic UI synchronization
 - [x] Enhanced error handling and logging
 
 ### Phase 2 Features (Future)

@@ -515,3 +515,34 @@ textarea {
 }
 
 /* Made with Bob */
+
+/* Webchat Customization - Override agent name display */
+/* This CSS targets the watsonx Orchestrate webchat header */
+/* Note: This is a workaround. The proper way is to change the agent's title in Orchestrate */
+
+/* Hide the original agent name and replace with custom text */
+[class*="ChatHeader"] [class*="title"]:not(:empty)::after {
+    content: "Meeting Assistant";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: inherit;
+    display: flex;
+    align-items: center;
+    padding-left: inherit;
+}
+
+[class*="ChatHeader"] [class*="title"]:not(:empty) {
+    position: relative;
+    color: transparent !important;
+}
+
+/* Alternative: Just hide the agent name completely */
+/* Uncomment these lines if you prefer to hide the name instead of replacing it */
+/*
+[class*="ChatHeader"] [class*="title"] {
+    display: none !important;
+}
+*/

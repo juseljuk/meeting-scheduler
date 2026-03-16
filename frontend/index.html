@@ -148,5 +148,178 @@
     <script src="js/app.js"></script>
     <script src="js/meetings.js"></script>
     <script src="js/calendar.js"></script>
+    
+    <!-- watsonx Orchestrate Webchat with Event Handlers and Custom Styling -->
+    <script>
+        // Function to refresh the UI
+        function refreshMeetingsUI() {
+            console.log('🔄 Refreshing meetings UI...');
+            
+            // Try multiple methods to refresh the UI
+            if (typeof window.loadMeetings === 'function') {
+                window.loadMeetings();
+                console.log('✓ window.loadMeetings() called');
+            } else if (typeof loadMeetings === 'function') {
+                loadMeetings();
+                console.log('✓ loadMeetings() called');
+            } else if (window.app && typeof window.app.loadMeetings === 'function') {
+                window.app.loadMeetings();
+                console.log('✓ window.app.loadMeetings() called');
+            } else {
+                // Fallback: trigger refresh button click
+                const refreshBtn = document.getElementById('refreshBtn');
+                if (refreshBtn) {
+                    refreshBtn.click();
+                    console.log('✓ Refresh button clicked (fallback)');
+                } else {
+                    console.error('❌ No refresh method available!');
+                }
+            }
+        }
+        
+        // Make it globally accessible for testing
+        window.refreshMeetingsUI = refreshMeetingsUI;
+        
+        // Event handler for when webchat loads
+        function onChatLoad(instance) {
+            console.log('✅ Webchat loaded, instance:', instance);
+            
+            // Register receive event handler
+            instance.on('receive', function(event, instance) {
+                console.log('📨 Agent response received:', event);
+                
+                // Extract text from the message
+                let text = '';
+                
+                if (event.message?.content) {
+                    // Extract text from content array
+                    text = event.message.content
+                        .map(item => item.text || '')
+                        .join(' ');
+                } else if (event.message?.text) {
+                    text = event.message.text;
+                } else if (event.text) {
+                    text = event.text;
+                }
+                
+                console.log('📝 Extracted text:', text);
+                
+                // Check for meeting action keywords
+                const actionKeywords = [
+                    'created', 'updated', 'deleted', 'scheduled', 'removed',
+                    'added', 'cancelled', 'modified', 'saved', 'booked',
+                    'meeting has been', 'successfully', 'confirmed'
+                ];
+                
+                const hasAction = actionKeywords.some(keyword =>
+                    text.toLowerCase().includes(keyword.toLowerCase())
+                );
+                
+                if (hasAction) {
+                    console.log('🔄 Meeting action detected! Refreshing UI in 2 seconds...');
+                    setTimeout(refreshMeetingsUI, 2000);
+                } else {
+                    console.log('ℹ️ No meeting action detected in response');
+                }
+            });
+            
+            console.log('✅ Event listener registered successfully');
+        }
+        
+        window.wxOConfiguration = {
+            orchestrationID: "20250430-1552-4383-00f2-8e9318aa2f1b_20250502-1858-1349-5018-58d645b23686",
+            hostURL: "https://eu-central-1.dl.watson-orchestrate.ibm.com",
+            rootElementID: "root",
+            showLauncher: true,
+            chatOptions: {
+                agentId: "dce5fd47-18cb-4eed-afd7-4c127294cec3",
+                onLoad: onChatLoad
+            },
+            
+            // Custom styling to match EMEA Travels branding
+            style: {
+                headerColor: '#4A5FFF',
+                userMessageBackgroundColor: '#4A5FFF',
+                primaryColor: '#4A5FFF',
+                showBackgroundGradient: true
+            },
+            
+            // Header configuration
+            header: {
+                showResetButton: true,
+                showAiDisclaimer: true
+            }
+        };
+
+        // Load webchat script
+        setTimeout(function () {
+            const script = document.createElement('script');
+            script.src = `${window.wxOConfiguration.hostURL}/wxochat/wxoLoader.js?embed=true`;
+            script.addEventListener('load', function () {
+                console.log('✅ Webchat loader script loaded');
+                
+                // Wait a bit for wxoLoader to be available
+                setTimeout(function() {
+                    if (typeof wxoLoader !== 'undefined') {
+                        console.log('✅ wxoLoader is available, initializing...');
+                        
+                        // Listen for the webchat ready event using DOM events
+                        window.addEventListener('message', function(event) {
+                            // Check if this is a message from the webchat
+                            if (event.data && event.data.type) {
+                                console.log('📨 Received message:', event.data.type, event.data);
+                                
+                                // Look for agent response messages
+                                if (event.data.type === 'receive' ||
+                                    event.data.type === 'agent:message' ||
+                                    event.data.type === 'message:received') {
+                                    
+                                    // Extract text from the message
+                                    let text = '';
+                                    if (event.data.message) {
+                                        text = typeof event.data.message === 'string'
+                                            ? event.data.message
+                                            : JSON.stringify(event.data.message);
+                                    } else if (event.data.text) {
+                                        text = event.data.text;
+                                    } else if (event.data.data) {
+                                        text = JSON.stringify(event.data.data);
+                                    }
+                                    
+                                    console.log('� Message text:', text);
+                                    
+                                    // Check for meeting action keywords
+                                    const actionKeywords = [
+                                        'created', 'updated', 'deleted', 'scheduled', 'removed',
+                                        'added', 'cancelled', 'modified', 'saved', 'booked',
+                                        'meeting has been', 'successfully', 'confirmed'
+                                    ];
+                                    
+                                    const hasAction = actionKeywords.some(keyword =>
+                                        text.toLowerCase().includes(keyword.toLowerCase())
+                                    );
+                                    
+                                    if (hasAction) {
+                                        console.log('🔄 Meeting action detected! Refreshing UI in 2 seconds...');
+                                        setTimeout(refreshMeetingsUI, 2000);
+                                    }
+                                }
+                            }
+                        });
+                        
+                        console.log('✅ Message event listener registered');
+                        
+                        // Initialize the webchat
+                        wxoLoader.init();
+                        console.log('✅ Webchat initialized');
+                        
+                    } else {
+                        console.error('❌ wxoLoader not available after script load');
+                    }
+                }, 100);
+            });
+            document.head.appendChild(script);
+        }, 0);
+    </script>
 </body>
 </html>
