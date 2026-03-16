@@ -1,0 +1,11 @@
+spec_version: v1
+kind: mcp
+name: meeting-manager
+description: MCP toolkit for managing meetings with CRUD operations
+command: node index.js
+env: []
+tools:
+  - "*"
+connections:
+  - meeting-backend-config
+package_root: ../../mcp-server

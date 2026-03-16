@@ -1,0 +1,14 @@
+# Connection configuration for Meeting Manager MCP Server
+# This provides the BACKEND_URL environment variable to the MCP server
+spec_version: v1
+kind: connection
+app_id: meeting-backend-config
+environments:
+  draft:
+    kind: key_value
+    type: team
+  live:
+    kind: key_value
+    type: team
+
+# Made with Bob

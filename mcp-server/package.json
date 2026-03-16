@@ -1,0 +1,17 @@
+{
+  "name": "meeting-manager-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP server for meeting management",
+  "main": "index.js",
+  "bin": {
+    "meeting-manager-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "axios": "^1.6.0"
+  }
+}

@@ -1,10 +1,10 @@
 # Meeting Scheduler Application
 
-A containerized web application for scheduling and managing customer meetings with travel information for small teams. Built with Node.js/Express backend, SQLite database, and vanilla JavaScript frontend with FullCalendar integration.
+A containerized web application for scheduling and managing customer meetings with travel information for small teams. Built with Node.js/Express backend, IBM Cloudant/SQLite database, and vanilla JavaScript frontend with FullCalendar integration. Includes AI agent integration via watsonx Orchestrate MCP server.
 
 ## Features
 
-- 📅 **Calendar View**: Interactive monthly/weekly/daily calendar views
+- 📅 **Calendar View**: Interactive monthly/weekly/daily calendar views with pagination
 - ✏️ **Meeting Management**: Create, edit, and delete meetings
 - 👥 **Customer Tracking**: Associate meetings with customers
 - 🏢 **On-site/Remote**: Mark meetings as on-site or remote
@@ -12,25 +12,36 @@ A containerized web application for scheduling and managing customer meetings wi
 - 📱 **Responsive Design**: Works on desktop and mobile devices
 - 🐳 **Containerized**: Fully dockerized for easy deployment
 - ☁️ **Cloud Ready**: Deployable to IBM Cloud Code Engine
+- 🗄️ **Dual Database Support**: IBM Cloudant (production) or SQLite (local)
+- 🤖 **AI Agent Integration**: watsonx Orchestrate MCP server for natural language meeting management
+- 📊 **Swagger API Documentation**: Interactive API documentation at `/api-docs`
 
 ## Technology Stack
 
 ### Backend
 - Node.js 18+
 - Express.js
-- SQLite3 with better-sqlite3
+- **Database**: IBM Cloudant (production) / SQLite3 with better-sqlite3 (local)
 - CORS middleware
+- Swagger/OpenAPI documentation
 
 ### Frontend
 - HTML5
 - Vanilla JavaScript (ES6+)
 - CSS3
-- FullCalendar.js
+- FullCalendar.js with pagination support
+
+### AI Integration
+- **MCP Server**: Model Context Protocol server for AI agent access
+- **watsonx Orchestrate**: AI agent platform integration
+- **5 MCP Tools**: list_meetings, get_meeting, create_meeting, update_meeting, delete_meeting
 
 ### DevOps
 - Docker & Docker Compose
 - Nginx (frontend server)
 - IBM Cloud Code Engine
+- IBM Cloudant (NoSQL database)
+- Cloud Object Storage (backup - optional)
 
 ## Prerequisites
 
@@ -109,22 +120,26 @@ The frontend will be available at http://localhost:8080
 
 ## Database Schema
 
-### meetings table
+### meetings table/document
 
-| Column | Type | Description |
+| Field | Type | Description |
 |--------|------|-------------|
-| id | INTEGER | Primary key (auto-increment) |
+| id | STRING/INTEGER | Primary key (timestamp-based string in Cloudant, auto-increment in SQLite) |
 | title | TEXT | Meeting title (required) |
 | description | TEXT | Meeting description |
 | start_datetime | TEXT | Start date and time (required) |
 | end_datetime | TEXT | End date and time (required) |
 | location | TEXT | Meeting location |
-| attendees | TEXT | Comma-separated attendee emails |
+| attendees | TEXT | Comma-separated attendee names (Ricardo, Jukka, Máté, Steve) |
 | customer | TEXT | Customer name/organization |
 | is_onsite | INTEGER | 0 = remote, 1 = on-site |
 | country | TEXT | Country for on-site meetings |
 | created_at | TEXT | Creation timestamp |
 | updated_at | TEXT | Last update timestamp |
+
+**Note**: The application automatically detects and uses the appropriate database:
+- **Production**: IBM Cloudant when `CLOUDANT_URL` and `CLOUDANT_APIKEY` environment variables are set
+- **Local**: SQLite when Cloudant credentials are not present
 
 ## API Endpoints
 
@@ -138,7 +153,11 @@ The frontend will be available at http://localhost:8080
 
 ### Health Check
 
-- `GET /health` - Application health status
+- `GET /health` - Application health status (includes database type: cloudant/sqlite)
+
+### API Documentation
+
+- `GET /api-docs` - Interactive Swagger UI documentation
 
 ### Example API Request
 
@@ -332,32 +351,61 @@ cd ../ibm-cloud
 meeting-app/
 ├── backend/
 │   ├── src/
-│   │   ├── server.js           # Express server
-│   │   ├── database.js         # SQLite database setup
+│   │   ├── server.js              # Express server
+│   │   ├── database.js            # SQLite database (local)
+│   │   ├── cloudantDatabase.js    # Cloudant database (production)
+│   │   ├── databaseAdapter.js     # Auto-detect database
+│   │   ├── cosBackup.js           # Cloud Object Storage backup
+│   │   ├── swagger.js             # Swagger/OpenAPI configuration
 │   │   ├── routes/
-│   │   │   └── meetings.js     # Meeting API routes
+│   │   │   └── meetings.js        # Meeting API routes
 │   │   └── middleware/
-│   │       └── errorHandler.js # Error handling
+│   │       └── errorHandler.js    # Error handling
 │   ├── package.json
 │   └── Dockerfile
 ├── frontend/
-│   ├── index.html              # Main HTML page
+│   ├── index.html                 # Main HTML page
 │   ├── css/
-│   │   └── styles.css          # Application styles
+│   │   └── styles.css             # Application styles
 │   ├── js/
-│   │   ├── app.js              # Main app logic
-│   │   ├── meetings.js         # Meeting CRUD operations
-│   │   └── calendar.js         # Calendar functionality
-│   ├── nginx.conf              # Nginx configuration
+│   │   ├── app.js                 # Main app logic
+│   │   ├── meetings.js            # Meeting CRUD operations
+│   │   └── calendar.js            # Calendar with pagination
+│   ├── nginx.conf                 # Nginx configuration
 │   └── Dockerfile
-├── ibm-cloud/
-│   └── deploy.sh               # Deployment script
-├── data/                       # SQLite database (gitignored)
-├── docker-compose.yml          # Local development setup
-├── .gitignore
-├── .dockerignore
-├── PLAN.md                     # Implementation plan
-└── README.md                   # This file
+├── mcp-server/                    # MCP Server for AI integration
+│   ├── index.js                   # MCP server entry point
+│   ├── package.json               # Dependencies
+│   ├── tools/                     # MCP tool handlers
+│   │   ├── list-meetings.js
+│   │   ├── get-meeting.js
+│   │   ├── create-meeting.js
+│   │   ├── update-meeting.js
+│   │   └── delete-meeting.js
+│   ├── utils/
+│   │   └── api-client.js          # HTTP client for backend
+│   ├── README.md                  # MCP server documentation
+│   ├── INSTALLATION.md            # Installation guide
+│   └── TROUBLESHOOTING.md         # Troubleshooting guide
+├── orchestrate/                   # watsonx Orchestrate specs
+│   └── specs/
+│       ├── meeting-mcp-toolkit.yaml        # MCP toolkit spec
+│       ├── meeting-backend-connection.yaml # Connection config
+│       └── meeting-manager-agent.yaml      # Agent spec
+├── ibm-cloud/                     # IBM Cloud deployment
+│   ├── deploy.sh                  # Basic deployment
+│   ├── deploy-with-cloudant.sh    # Cloudant deployment
+│   ├── deploy-with-cos-backup.sh  # COS backup deployment
+│   ├── deploy-with-storage.sh     # Storage deployment
+│   ├── CLOUDANT_DEPLOYMENT.md     # Cloudant guide
+│   ├── STORAGE_SOLUTIONS.md       # Storage options
+│   └── QUICK_START.md             # Quick start guide
+├── data/                          # SQLite database (gitignored)
+├── docker-compose.yml             # Local development setup
+├── PLAN.md                        # Implementation plan
+├── MCP_SERVER_OPTION.md           # MCP server design doc
+├── IMPLEMENTATION_SUMMARY.md      # Implementation summary
+└── README.md                      # This file
 ```
 
 ## Environment Variables
@@ -366,12 +414,24 @@ meeting-app/
 
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment (development/production)
-- `DATABASE_PATH` - Path to SQLite database file
+- `DATABASE_PATH` - Path to SQLite database file (local only)
 - `CORS_ORIGIN` - Allowed CORS origin (optional)
+- `CLOUDANT_URL` - IBM Cloudant database URL (production)
+- `CLOUDANT_APIKEY` - IBM Cloudant API key (production)
+- `COS_ENDPOINT` - Cloud Object Storage endpoint (optional backup)
+- `COS_API_KEY_ID` - COS API key (optional backup)
+- `COS_INSTANCE_CRN` - COS instance CRN (optional backup)
+- `COS_BUCKET_NAME` - COS bucket name (optional backup)
 
 ### Frontend
 
+- `BACKEND_URL` - Backend API URL (injected at container startup)
+
 The frontend automatically detects if running on localhost and adjusts the API URL accordingly.
+
+### MCP Server
+
+- `BACKEND_URL` - Backend API URL (set via watsonx Orchestrate connection)
 
 ## Development
 
@@ -450,17 +510,67 @@ For issues and questions:
 - Review the PLAN.md for implementation details
 - Open an issue on the repository
 
+## AI Agent Integration
+
+The application includes a Model Context Protocol (MCP) server that enables AI agents (via watsonx Orchestrate) to manage meetings through natural language.
+
+### Features
+
+- **Natural Language Interface**: "List all meetings", "Create a meeting for tomorrow"
+- **5 MCP Tools**: Complete CRUD operations for meetings
+- **Secure Configuration**: Backend URL managed via watsonx Orchestrate connections
+- **Enhanced Error Reporting**: Detailed error messages for troubleshooting
+
+### Quick Start
+
+See [`mcp-server/README.md`](mcp-server/README.md) for complete documentation.
+
+**Basic setup:**
+
+```bash
+# 1. Import connection
+orchestrate connections import -f orchestrate/specs/meeting-backend-connection.yaml
+
+# 2. Set backend URL
+orchestrate connections set-credentials \
+  -a meeting-backend-config \
+  --env draft \
+  -e "BACKEND_URL=https://your-backend-url.codeengine.appdomain.cloud"
+
+# 3. Import toolkit
+orchestrate toolkits import -f orchestrate/specs/meeting-mcp-toolkit.yaml
+
+# 4. Import agent
+orchestrate agents import -f orchestrate/specs/meeting-manager-agent.yaml
+```
+
+### Documentation
+
+- [`mcp-server/README.md`](mcp-server/README.md) - Complete MCP server documentation
+- [`mcp-server/INSTALLATION.md`](mcp-server/INSTALLATION.md) - Installation guide
+- [`mcp-server/TROUBLESHOOTING.md`](mcp-server/TROUBLESHOOTING.md) - Troubleshooting guide
+- [`MCP_SERVER_OPTION.md`](MCP_SERVER_OPTION.md) - Design and architecture
+
 ## Roadmap
+
+### Completed Features ✅
+- [x] IBM Cloudant database integration
+- [x] Calendar pagination support
+- [x] Swagger API documentation
+- [x] MCP server for AI agent integration
+- [x] watsonx Orchestrate agent
+- [x] Enhanced error handling and logging
 
 ### Phase 2 Features (Future)
 - [ ] User authentication and authorization
 - [ ] Email notifications for meeting reminders
 - [ ] Export meetings to iCalendar format
-- [ ] Search and filter functionality
+- [ ] Advanced search and filter functionality
 - [ ] Team member availability view
 - [ ] Conflict detection for overlapping meetings
 - [ ] Mobile app (React Native)
 - [ ] Integration with calendar services (Google Calendar, Outlook)
+- [ ] Voice interface via watsonx Orchestrate
 
 ---
 
