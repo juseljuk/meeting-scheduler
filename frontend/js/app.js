@@ -56,6 +56,10 @@ function initializeEventListeners() {
     // Participant filter change
     participantFilter.addEventListener('change', (e) => {
         window.app.selectedParticipant = e.target.value;
+        // Reset to page 1 when filter changes
+        if (typeof currentPage !== 'undefined') {
+            currentPage = 1;
+        }
         loadMeetings();
     });
 
@@ -178,5 +182,6 @@ window.app = {
     loadMeetings: () => loadMeetings(),
     filterMeetingsByParticipant
 };
+
 
 // Made with Bob

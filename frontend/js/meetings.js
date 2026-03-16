@@ -1,5 +1,10 @@
 // Meeting API functions
 
+// Pagination state
+const MEETINGS_PER_PAGE = 9;
+let currentPage = 1;
+let totalPages = 1;
+
 // Load all meetings
 async function loadMeetings() {
     try {
@@ -11,6 +16,9 @@ async function loadMeetings() {
         
         const meetings = await response.json();
         window.app.allMeetings = meetings;
+        
+        // Reset to first page when loading new data
+        currentPage = 1;
         
         // Update both calendar and list
         updateCalendar(meetings);
@@ -112,13 +120,13 @@ async function deleteMeeting() {
     }
 }
 
-// Render meetings list
+// Render meetings list with pagination
 function renderMeetingsList(meetings) {
     const container = document.getElementById('meetingsList');
     
     if (!meetings || meetings.length === 0) {
         container.innerHTML = `
-            <div class="empty-state">
+            <div class="empty-state" style="grid-column: 1 / -1;">
                 <h3>No meetings scheduled</h3>
                 <p>Click "New Meeting" to create your first meeting</p>
             </div>
@@ -131,7 +139,7 @@ function renderMeetingsList(meetings) {
     
     if (filteredMeetings.length === 0) {
         container.innerHTML = `
-            <div class="empty-state">
+            <div class="empty-state" style="grid-column: 1 / -1;">
                 <h3>No meetings found</h3>
                 <p>No meetings for the selected participant</p>
             </div>
@@ -152,7 +160,7 @@ function renderMeetingsList(meetings) {
     
     if (upcomingMeetings.length === 0) {
         container.innerHTML = `
-            <div class="empty-state">
+            <div class="empty-state" style="grid-column: 1 / -1;">
                 <h3>No upcoming meetings</h3>
                 <p>All meetings are in the past</p>
             </div>
@@ -160,7 +168,21 @@ function renderMeetingsList(meetings) {
         return;
     }
     
-    container.innerHTML = upcomingMeetings.map(meeting => {
+    // Calculate pagination
+    totalPages = Math.ceil(upcomingMeetings.length / MEETINGS_PER_PAGE);
+    
+    // Reset to page 1 if current page is out of bounds
+    if (currentPage > totalPages) {
+        currentPage = 1;
+    }
+    
+    // Get meetings for current page
+    const startIndex = (currentPage - 1) * MEETINGS_PER_PAGE;
+    const endIndex = startIndex + MEETINGS_PER_PAGE;
+    const paginatedMeetings = upcomingMeetings.slice(startIndex, endIndex);
+    
+    // Render meeting cards
+    const meetingsHTML = paginatedMeetings.map(meeting => {
         // Format date range
         const startDate = new Date(meeting.start_datetime);
         const endDate = new Date(meeting.end_datetime);
@@ -171,7 +193,8 @@ function renderMeetingsList(meetings) {
         
         return `
             <div class="meeting-card ${meeting.is_onsite ? 'onsite' : ''}"
-                 onclick="window.app.openEditMeetingModal(${JSON.stringify(meeting).replace(/"/g, '"')})">
+                 data-meeting='${JSON.stringify(meeting)}'
+                 onclick="window.app.openEditMeetingModal(JSON.parse(this.getAttribute('data-meeting')))">
                 <h3>${escapeHtml(meeting.title)}</h3>
                 ${meeting.customer ? `<div class="customer">👤 ${escapeHtml(meeting.customer)}</div>` : ''}
                 <div class="time">📅 ${dateRange}</div>
@@ -184,7 +207,62 @@ function renderMeetingsList(meetings) {
             </div>
         `;
     }).join('');
+    
+    // Render pagination controls
+    const paginationHTML = renderPaginationControls(upcomingMeetings.length);
+    
+    // Update container with meetings and pagination
+    container.innerHTML = meetingsHTML + paginationHTML;
 }
+// Render pagination controls
+function renderPaginationControls(totalMeetings) {
+    if (totalMeetings <= MEETINGS_PER_PAGE) {
+        return ''; // No pagination needed
+    }
+    
+    const startItem = (currentPage - 1) * MEETINGS_PER_PAGE + 1;
+    const endItem = Math.min(currentPage * MEETINGS_PER_PAGE, totalMeetings);
+    
+    return `
+        <div class="pagination-controls" style="grid-column: 1 / -1;">
+            <button
+                class="btn btn-secondary"
+                onclick="window.changePage(${currentPage - 1})"
+                ${currentPage === 1 ? 'disabled' : ''}>
+                ← Previous
+            </button>
+            <span class="pagination-info">
+                Showing ${startItem}-${endItem} of ${totalMeetings} meetings
+                (Page ${currentPage} of ${totalPages})
+            </span>
+            <button
+                class="btn btn-secondary"
+                onclick="window.changePage(${currentPage + 1})"
+                ${currentPage === totalPages ? 'disabled' : ''}>
+                Next →
+            </button>
+        </div>
+    `;
+}
+
+// Handle page change
+function handlePageChange(newPage) {
+    if (newPage < 1 || newPage > totalPages) {
+        return;
+    }
+    
+    currentPage = newPage;
+    renderMeetingsList(window.app.allMeetings);
+    
+    // Scroll to top of meetings list
+    document.querySelector('.meeting-list').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+    });
+}
+
+// Make changePage globally accessible
+window.changePage = handlePageChange;
 
 // Format date range for display
 function formatDateRange(startDate, endDate) {
